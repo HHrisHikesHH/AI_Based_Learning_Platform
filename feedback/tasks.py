@@ -56,6 +56,10 @@ def _gather_feedback_context(attempt_id: int):
 def generate_personalized_feedback(attempt_id: int):
     """
     Generate personalized feedback report for a quiz attempt.
+    Can be called directly (synchronously) or via Celery (.delay()).
+    """
+    """
+    Generate personalized feedback report for a quiz attempt.
     """
     if FeedbackReport.objects.filter(attempt_id=attempt_id).exists():
         return
@@ -151,6 +155,10 @@ Return JSON:
 def update_user_progress(user_id: int, module_id: int):
     """
     Update user progress for a module.
+    Can be called directly (synchronously) or via Celery (.delay()).
+    """
+    """
+    Update user progress for a module.
     """
     from quizzes.models import QuizAttempt
     from documents.models import Module
@@ -177,6 +185,10 @@ def update_user_progress(user_id: int, module_id: int):
 
 @shared_task
 def update_document_stats(user_id: int, document_id: int):
+    """
+    Update aggregate statistics for user-document combination.
+    Can be called directly (synchronously) or via Celery (.delay()).
+    """
     """
     Update aggregate statistics for user-document combination.
     """

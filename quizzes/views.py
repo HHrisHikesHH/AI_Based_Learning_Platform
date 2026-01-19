@@ -92,8 +92,10 @@ class QuizSubmitView(APIView):
                         status=status.HTTP_400_BAD_REQUEST,
                     )
                 question = questions[qid]
-                user_answer = ad.get("user_answer")
-                is_correct = user_answer == question.correct_answer
+                user_answer = (ad.get("user_answer") or "").strip()
+                correct_answer = (question.correct_answer or "").strip()
+                # Compare answers (case-insensitive, whitespace-normalized)
+                is_correct = user_answer.lower() == correct_answer.lower()
                 if is_correct:
                     correct_count += 1
 
