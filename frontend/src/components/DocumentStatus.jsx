@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { documentsAPI, quizzesAPI } from '../api';
 import './DocumentStatus.css';
 
@@ -7,10 +7,9 @@ function DocumentStatus({ documentId, onQuizStart, onBack }) {
   const [quizzes, setQuizzes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const intervalRef = useRef(null);
 
   useEffect(() => {
-    let interval = null;
-
     const pollStatus = async () => {
       try {
         const data = await documentsAPI.getStatus(documentId);
@@ -19,9 +18,9 @@ function DocumentStatus({ documentId, onQuizStart, onBack }) {
 
         // If completed, fetch available quizzes and stop polling
         if (data.status === 'COMPLETED') {
-          if (interval) {
-            clearInterval(interval);
-            interval = null;
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
           }
           
           if (data.modules_ready?.length > 0) {
@@ -32,6 +31,7 @@ function DocumentStatus({ documentId, onQuizStart, onBack }) {
               console.error('Failed to fetch quizzes:', err);
             }
           }
+          return; // Stop further polling
         }
       } catch (err) {
         setError(err.response?.data?.detail || 'Failed to fetch status');
@@ -39,16 +39,18 @@ function DocumentStatus({ documentId, onQuizStart, onBack }) {
       }
     };
 
+    // Initial poll
     pollStatus();
     
-    // Only poll if status is not COMPLETED
-    if (!status || status.status !== 'COMPLETED') {
-      interval = setInterval(pollStatus, 2000); // Poll every 2 seconds
-    }
+    // Set up interval for polling (will be cleared when COMPLETED)
+    intervalRef.current = setInterval(() => {
+      pollStatus();
+    }, 2000);
 
     return () => {
-      if (interval) {
-        clearInterval(interval);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
   }, [documentId]);
