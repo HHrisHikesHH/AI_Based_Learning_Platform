@@ -72,9 +72,14 @@ function QuizTaking({ attemptId, quizId, onSubmit, onCancel }) {
         if (!finalTime && questionStartTimes[q.id]) {
           finalTime = Math.floor((Date.now() - questionStartTimes[q.id]) / 1000);
         }
+        const userAnswer = answers[q.id];
+        // Ensure user_answer is a string and matches one of the options
+        if (!userAnswer) {
+          throw new Error(`Please answer question ${q.question_order}`);
+        }
         return {
           question_id: q.id,
-          user_answer: answers[q.id] || '',
+          user_answer: String(userAnswer),
           time_spent_seconds: finalTime || 0,
         };
       });
