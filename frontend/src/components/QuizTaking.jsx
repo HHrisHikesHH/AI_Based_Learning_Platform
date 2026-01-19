@@ -2,34 +2,57 @@ import { useState, useEffect } from 'react';
 import { quizzesAPI } from '../api';
 import './QuizTaking.css';
 
-function QuizTaking({ attemptId, onSubmit, onCancel }) {
+function QuizTaking({ attemptId, quizId, onSubmit, onCancel }) {
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
   const [timeSpent, setTimeSpent] = useState({});
-  const [startTime] = useState(Date.now());
+  const [questionStartTimes, setQuestionStartTimes] = useState({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // Get questions from localStorage (set when starting quiz)
-    const savedQuestions = localStorage.getItem('current_quiz_questions');
-    if (savedQuestions) {
+    // Fetch questions when component mounts
+    const fetchQuestions = async () => {
       try {
-        setQuestions(JSON.parse(savedQuestions));
+        // Try to get from localStorage first (if we just started)
+        const savedQuestions = localStorage.getItem('current_quiz_questions');
+        if (savedQuestions) {
+          const parsed = JSON.parse(savedQuestions);
+          setQuestions(parsed);
+          // Initialize start times for each question
+          const startTimes = {};
+          parsed.forEach((q) => {
+            startTimes[q.id] = Date.now();
+          });
+          setQuestionStartTimes(startTimes);
+        } else if (quizId) {
+          // If not in localStorage, fetch from API
+          const result = await quizzesAPI.start(quizId);
+          setQuestions(result.questions || []);
+          const startTimes = {};
+          (result.questions || []).forEach((q) => {
+            startTimes[q.id] = Date.now();
+          });
+          setQuestionStartTimes(startTimes);
+        } else {
+          setError('Quiz ID not provided. Please start the quiz again.');
+        }
       } catch (err) {
-        setError('Failed to load quiz questions');
+        setError(err.response?.data?.detail || 'Failed to load quiz questions');
+      } finally {
+        setLoading(false);
       }
-    } else {
-      setError('Quiz questions not found. Please start the quiz again.');
-    }
-    setLoading(false);
-  }, [attemptId]);
+    };
+    fetchQuestions();
+  }, [attemptId, quizId]);
 
   const handleAnswerChange = (questionId, answer) => {
     setAnswers({ ...answers, [questionId]: answer });
-    if (!timeSpent[questionId]) {
-      setTimeSpent({ ...timeSpent, [questionId]: Math.floor((Date.now() - startTime) / 1000) });
+    // Calculate time spent on this question
+    if (questionStartTimes[questionId]) {
+      const elapsed = Math.floor((Date.now() - questionStartTimes[questionId]) / 1000);
+      setTimeSpent({ ...timeSpent, [questionId]: elapsed });
     }
   };
 
@@ -43,11 +66,18 @@ function QuizTaking({ attemptId, onSubmit, onCancel }) {
     setError('');
 
     try {
-      const answersArray = questions.map((q) => ({
-        question_id: q.id,
-        user_answer: answers[q.id] || '',
-        time_spent_seconds: timeSpent[q.id] || 0,
-      }));
+      const answersArray = questions.map((q) => {
+        // Calculate final time if not already set
+        let finalTime = timeSpent[q.id];
+        if (!finalTime && questionStartTimes[q.id]) {
+          finalTime = Math.floor((Date.now() - questionStartTimes[q.id]) / 1000);
+        }
+        return {
+          question_id: q.id,
+          user_answer: answers[q.id] || '',
+          time_spent_seconds: finalTime || 0,
+        };
+      });
 
       const result = await quizzesAPI.submit(attemptId, answersArray);
       onSubmit(result);
@@ -89,18 +119,22 @@ function QuizTaking({ attemptId, onSubmit, onCancel }) {
               Question {index + 1}: {question.question_text}
             </h3>
             <div className="options-list">
-              {question.options.map((option, optIndex) => (
-                <label key={optIndex} className="option-label">
-                  <input
-                    type="radio"
-                    name={`question-${question.id}`}
-                    value={option}
-                    checked={answers[question.id] === option}
-                    onChange={() => handleAnswerChange(question.id, option)}
-                  />
-                  <span>{option}</span>
-                </label>
-              ))}
+              {Array.isArray(question.options) ? (
+                question.options.map((option, optIndex) => (
+                  <label key={optIndex} className="option-label">
+                    <input
+                      type="radio"
+                      name={`question-${question.id}`}
+                      value={option}
+                      checked={answers[question.id] === option}
+                      onChange={() => handleAnswerChange(question.id, option)}
+                    />
+                    <span>{option}</span>
+                  </label>
+                ))
+              ) : (
+                <p className="error-message">Invalid options format</p>
+              )}
             </div>
           </div>
         ))}

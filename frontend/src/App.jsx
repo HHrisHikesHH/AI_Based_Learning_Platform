@@ -45,9 +45,13 @@ function App() {
     setCurrentView('document-status');
   };
 
-  const handleQuizStart = (qId, attId) => {
+  const handleQuizStart = (qId, attId, questions) => {
     setQuizId(qId);
     setAttemptId(attId);
+    // Store questions in localStorage for QuizTaking component
+    if (questions) {
+      localStorage.setItem('current_quiz_questions', JSON.stringify(questions));
+    }
     setCurrentView('quiz-taking');
   };
 
@@ -91,9 +95,10 @@ function App() {
             onBack={() => setCurrentView('dashboard')}
           />
         )}
-        {currentView === 'quiz-taking' && attemptId && (
+        {currentView === 'quiz-taking' && attemptId && quizId && (
           <QuizTaking
             attemptId={attemptId}
+            quizId={quizId}
             onSubmit={handleQuizSubmit}
             onCancel={() => setCurrentView('dashboard')}
           />

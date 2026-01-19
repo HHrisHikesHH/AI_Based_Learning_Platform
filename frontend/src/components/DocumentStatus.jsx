@@ -44,7 +44,7 @@ function DocumentStatus({ documentId, onQuizStart, onBack }) {
       const result = await quizzesAPI.start(quizId);
       localStorage.setItem('current_quiz_id', quizId.toString());
       localStorage.setItem('current_quiz_questions', JSON.stringify(result.questions || []));
-      onQuizStart(quizId, result.attempt_id);
+      onQuizStart(quizId, result.attempt_id, result.questions);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to start quiz');
     }
