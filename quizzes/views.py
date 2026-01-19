@@ -94,8 +94,38 @@ class QuizSubmitView(APIView):
                 question = questions[qid]
                 user_answer = (ad.get("user_answer") or "").strip()
                 correct_answer = (question.correct_answer or "").strip()
-                # Compare answers (case-insensitive, whitespace-normalized)
-                is_correct = user_answer.lower() == correct_answer.lower()
+                
+                # Normalize answers for comparison
+                # If user_answer starts with a letter followed by ". ", extract just the letter
+                # e.g., "C. Some text..." -> "C"
+                user_answer_normalized = user_answer.lower()
+                if user_answer_normalized and len(user_answer_normalized) > 2 and user_answer_normalized[1] == '.':
+                    user_answer_normalized = user_answer_normalized[0]
+                
+                correct_answer_normalized = correct_answer.lower()
+                if correct_answer_normalized and len(correct_answer_normalized) > 2 and correct_answer_normalized[1] == '.':
+                    correct_answer_normalized = correct_answer_normalized[0]
+                
+                # Also check if correct_answer matches any of the full option texts
+                options = question.options or []
+                is_correct = False
+                
+                # First, try direct comparison (normalized)
+                if user_answer_normalized == correct_answer_normalized:
+                    is_correct = True
+                else:
+                    # Check if correct_answer is a letter and user_answer starts with that letter
+                    if len(correct_answer_normalized) == 1 and user_answer_normalized.startswith(correct_answer_normalized):
+                        is_correct = True
+                    # Check if user_answer matches the full correct option text
+                    elif user_answer.lower() == correct_answer.lower():
+                        is_correct = True
+                    # Check if correct_answer matches any option in the list
+                    elif correct_answer in options:
+                        correct_option_text = options[options.index(correct_answer)]
+                        if user_answer.lower() == correct_option_text.lower():
+                            is_correct = True
+                
                 if is_correct:
                     correct_count += 1
 
