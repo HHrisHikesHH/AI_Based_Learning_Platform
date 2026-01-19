@@ -7,25 +7,44 @@ function QuizResults({ results, attemptId, onBack }) {
   const [loadingFeedback, setLoadingFeedback] = useState(false);
 
   useEffect(() => {
-    if (results.feedback_status === 'GENERATING') {
-      // Poll for feedback
-      const pollFeedback = async () => {
-        try {
-          const data = await quizzesAPI.getFeedback(attemptId);
-          if (data.status === 'COMPLETED') {
-            setFeedback(data.feedback);
-            setLoadingFeedback(false);
-          } else {
-            setTimeout(pollFeedback, 3000);
-          }
-        } catch (err) {
+    // Check for feedback immediately, then poll if still generating
+    const checkFeedback = async () => {
+      try {
+        const data = await quizzesAPI.getFeedback(attemptId);
+        if (data.status === 'COMPLETED' && data.feedback) {
+          setFeedback(data.feedback);
+          setLoadingFeedback(false);
+        } else if (data.status === 'GENERATING') {
+          // Poll for feedback
+          setLoadingFeedback(true);
+          const pollFeedback = async () => {
+            try {
+              const pollData = await quizzesAPI.getFeedback(attemptId);
+              if (pollData.status === 'COMPLETED' && pollData.feedback) {
+                setFeedback(pollData.feedback);
+                setLoadingFeedback(false);
+              } else if (pollData.status === 'GENERATING') {
+                setTimeout(pollFeedback, 2000); // Poll every 2 seconds
+              } else {
+                setLoadingFeedback(false);
+              }
+            } catch (err) {
+              setLoadingFeedback(false);
+            }
+          };
+          setTimeout(pollFeedback, 2000);
+        } else {
           setLoadingFeedback(false);
         }
-      };
-      setLoadingFeedback(true);
-      pollFeedback();
+      } catch (err) {
+        setLoadingFeedback(false);
+      }
+    };
+
+    if (attemptId) {
+      checkFeedback();
     }
-  }, [attemptId, results.feedback_status]);
+  }, [attemptId]);
 
   const scoreColor = results.score >= 70 ? 'green' : results.score >= 50 ? 'orange' : 'red';
 

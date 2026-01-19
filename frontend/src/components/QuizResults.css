@@ -146,6 +146,12 @@
   font-style: italic;
 }
 
+.feedback-loading .info-text {
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+  opacity: 0.8;
+}
+
 .feedback-section {
   margin-top: 2rem;
   padding: 2rem;

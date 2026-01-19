@@ -112,7 +112,10 @@ function QuizTaking({ attemptId, quizId, onSubmit, onCancel }) {
     <div className="quiz-container">
       <h1>Quiz</h1>
       <div className="quiz-progress">
-        Answered: {Object.keys(answers).length} / {questions.length}
+        <span>Progress: {Object.keys(answers).length} / {questions.length} answered</span>
+        {Object.keys(answers).length === questions.length && (
+          <span className="progress-complete">✓ All questions answered</span>
+        )}
       </div>
 
       {error && <div className="error-message">{error}</div>}
