@@ -58,9 +58,6 @@ def generate_personalized_feedback(attempt_id: int):
     Generate personalized feedback report for a quiz attempt.
     Can be called directly (synchronously) or via Celery (.delay()).
     """
-    """
-    Generate personalized feedback report for a quiz attempt.
-    """
     if FeedbackReport.objects.filter(attempt_id=attempt_id).exists():
         return
 
@@ -132,23 +129,58 @@ Return JSON:
 
     api_key = getattr(settings, "GEMINI_API_KEY", None)
     if not api_key:
+        # Create a basic feedback report without LLM
+        FeedbackReport.objects.create(
+            attempt_id=attempt_id,
+            overall_feedback=f"Your score was {ctx['current']['score']}%. Keep practicing!",
+            strengths=["Completed the quiz", "Showed engagement"],
+            weaknesses=incorrect_concepts[:3] if incorrect_concepts else ["Review the material"],
+            recommended_topics=incorrect_concepts[:3] if incorrect_concepts else [],
+            personalized_message="Continue learning and try again to improve your score!",
+        )
         return
 
-    llm = get_chat_llm(api_key=api_key, temperature=0.5)
-    rate_limiter = GeminiRateLimiter()
+    try:
+        llm = get_chat_llm(api_key=api_key, temperature=0.5)
+        rate_limiter = GeminiRateLimiter()
 
-    asyncio.run(rate_limiter.acquire(estimated_tokens=1500))
-    response = llm.invoke(prompt)
-    data = _safe_json_loads(getattr(response, "content", "") or str(response)) or {}
+        asyncio.run(rate_limiter.acquire(estimated_tokens=1500))
+        response = llm.invoke(prompt)
+        data = _safe_json_loads(getattr(response, "content", "") or str(response)) or {}
 
-    FeedbackReport.objects.create(
-        attempt_id=attempt_id,
-        overall_feedback=data.get("overall_feedback", ""),
-        strengths=data.get("strengths", []),
-        weaknesses=data.get("weaknesses", []),
-        recommended_topics=data.get("recommended_topics", []),
-        personalized_message=data.get("personalized_message", ""),
-    )
+        # If LLM failed, create basic feedback
+        if not data or not data.get("overall_feedback"):
+            FeedbackReport.objects.create(
+                attempt_id=attempt_id,
+                overall_feedback=f"Your score was {ctx['current']['score']}%. Keep practicing!",
+                strengths=["Completed the quiz", "Showed engagement"],
+                weaknesses=incorrect_concepts[:3] if incorrect_concepts else ["Review the material"],
+                recommended_topics=incorrect_concepts[:3] if incorrect_concepts else [],
+                personalized_message="Continue learning and try again to improve your score!",
+            )
+            return
+
+        FeedbackReport.objects.create(
+            attempt_id=attempt_id,
+            overall_feedback=data.get("overall_feedback", ""),
+            strengths=data.get("strengths", []),
+            weaknesses=data.get("weaknesses", []),
+            recommended_topics=data.get("recommended_topics", []),
+            personalized_message=data.get("personalized_message", ""),
+        )
+    except Exception as exc:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error("Failed to generate feedback with LLM: %s", exc)
+        # Create basic feedback on error
+        FeedbackReport.objects.create(
+            attempt_id=attempt_id,
+            overall_feedback=f"Your score was {ctx['current']['score']}%. Keep practicing!",
+            strengths=["Completed the quiz", "Showed engagement"],
+            weaknesses=incorrect_concepts[:3] if incorrect_concepts else ["Review the material"],
+            recommended_topics=incorrect_concepts[:3] if incorrect_concepts else [],
+            personalized_message="Continue learning and try again to improve your score!",
+        )
 
 
 @shared_task
