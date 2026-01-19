@@ -41,18 +41,18 @@ db.sqlite3-journal
 *.pot
 *.pyc
 
-# IDEs
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 .DS_Store
-
-# Environment variables
-.env
-.env.local
-.env.*.local
 
 # Testing
 .pytest_cache/
@@ -68,28 +68,38 @@ htmlcov/
 celerybeat-schedule
 celerybeat.pid
 
-# Redis
-dump.rdb
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
 
-# PostgreSQL
-*.sql.backup
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
 
-# Media files (user uploads)
-/media/*
-!/media/.gitkeep
+# Pyre type checker
+.pyre/
 
-# Static files
-/staticfiles/*
-!/staticfiles/.gitkeep
+# Project specific
+test_*.py
+*_test.py
+upload_*.py
+verify_*.py
+END_TO_END_ANALYSIS.md
+TEST_RESULTS.md
 
-# Migration files (keep structure, but can be regenerated)
-# Uncomment if you want to ignore migrations
-# */migrations/*.py
-# !*/migrations/__init__.py
+# Keep test files but ignore test scripts
+!documents/tests.py
+!quizzes/tests.py
+!feedback/tests.py
+!users/tests.py
 
-# Logs
-logs/
-*.log
+# Database
+*.db
+*.sqlite
 
 # OS
 Thumbs.db
@@ -99,35 +109,4 @@ Thumbs.db
 *.tmp
 *.bak
 *.swp
-*~
-
-# Test files
-test_*.py
-*_test.py
-!**/tests/**/*.py
-
-# Documentation builds
-docs/_build/
-
-# Coverage reports
-.coverage
-.coverage.*
-htmlcov/
-
-# MyPy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# Project specific
-test_llm.py
-test_quiz_llm.py
-test_end_to_end.py
-upload_langchain_pdf_test.py
-verify_code_structure.py
-END_TO_END_ANALYSIS.md
-TEST_RESULTS.md
 
