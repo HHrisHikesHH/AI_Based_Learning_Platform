@@ -9,19 +9,28 @@ function DocumentStatus({ documentId, onQuizStart, onBack }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let interval = null;
+
     const pollStatus = async () => {
       try {
         const data = await documentsAPI.getStatus(documentId);
         setStatus(data);
         setLoading(false);
 
-        // If completed, fetch available quizzes
-        if (data.status === 'COMPLETED' && data.modules_ready?.length > 0) {
-          try {
-            const quizzesData = await documentsAPI.getQuizzes(documentId);
-            setQuizzes(quizzesData.quizzes || []);
-          } catch (err) {
-            console.error('Failed to fetch quizzes:', err);
+        // If completed, fetch available quizzes and stop polling
+        if (data.status === 'COMPLETED') {
+          if (interval) {
+            clearInterval(interval);
+            interval = null;
+          }
+          
+          if (data.modules_ready?.length > 0) {
+            try {
+              const quizzesData = await documentsAPI.getQuizzes(documentId);
+              setQuizzes(quizzesData.quizzes || []);
+            } catch (err) {
+              console.error('Failed to fetch quizzes:', err);
+            }
           }
         }
       } catch (err) {
@@ -31,25 +40,39 @@ function DocumentStatus({ documentId, onQuizStart, onBack }) {
     };
 
     pollStatus();
-    const interval = setInterval(pollStatus, 2000); // Poll every 2 seconds
+    
+    // Only poll if status is not COMPLETED
+    if (!status || status.status !== 'COMPLETED') {
+      interval = setInterval(pollStatus, 2000); // Poll every 2 seconds
+    }
 
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
   }, [documentId]);
 
-  const handleStartQuiz = async () => {
-    const quizIdInput = document.getElementById('quiz-id-input');
-    const quizId = quizIdInput ? parseInt(quizIdInput.value) : null;
+  const handleStartQuiz = async (quizId = null) => {
+    // If quizId is provided directly, use it; otherwise try to get from input
+    let finalQuizId = quizId;
     
-    if (!quizId || isNaN(quizId)) {
+    if (!finalQuizId) {
+      const quizIdInput = document.getElementById('quiz-id-input');
+      finalQuizId = quizIdInput ? parseInt(quizIdInput.value) : null;
+    }
+    
+    if (!finalQuizId || isNaN(finalQuizId)) {
       setError('Please enter a valid quiz ID');
       return;
     }
 
+    setError(''); // Clear any previous errors
     try {
-      const result = await quizzesAPI.start(quizId);
-      localStorage.setItem('current_quiz_id', quizId.toString());
+      const result = await quizzesAPI.start(finalQuizId);
+      localStorage.setItem('current_quiz_id', finalQuizId.toString());
       localStorage.setItem('current_quiz_questions', JSON.stringify(result.questions || []));
-      onQuizStart(quizId, result.attempt_id, result.questions);
+      onQuizStart(finalQuizId, result.attempt_id, result.questions);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to start quiz');
     }
@@ -107,11 +130,7 @@ function DocumentStatus({ documentId, onQuizStart, onBack }) {
                     <p>Questions: {quiz.total_questions} | Difficulty: {quiz.difficulty}</p>
                   </div>
                   <button
-                    onClick={() => {
-                      const quizIdInput = document.getElementById('quiz-id-input');
-                      if (quizIdInput) quizIdInput.value = quiz.id;
-                      handleStartQuiz();
-                    }}
+                    onClick={() => handleStartQuiz(quiz.id)}
                     className="primary-button"
                   >
                     Start Quiz
@@ -130,7 +149,7 @@ function DocumentStatus({ documentId, onQuizStart, onBack }) {
                   placeholder="Or enter Quiz ID manually"
                   id="quiz-id-input"
                 />
-                <button onClick={handleStartQuiz} className="primary-button">
+                <button onClick={() => handleStartQuiz()} className="primary-button">
                   Start Quiz
                 </button>
               </div>
