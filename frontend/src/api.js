@@ -68,6 +68,10 @@ export const documentsAPI = {
     const response = await api.get(`/documents/${documentId}/analytics/`);
     return response.data;
   },
+  getQuizzes: async (documentId) => {
+    const response = await api.get(`/documents/${documentId}/quizzes/`);
+    return response.data;
+  },
 };
 
 // Quizzes API

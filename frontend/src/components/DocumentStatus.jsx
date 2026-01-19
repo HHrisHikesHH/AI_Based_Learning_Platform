@@ -4,6 +4,7 @@ import './DocumentStatus.css';
 
 function DocumentStatus({ documentId, onQuizStart, onBack }) {
   const [status, setStatus] = useState(null);
+  const [quizzes, setQuizzes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -14,10 +15,14 @@ function DocumentStatus({ documentId, onQuizStart, onBack }) {
         setStatus(data);
         setLoading(false);
 
-        // If completed and modules are ready, we can show quiz options
+        // If completed, fetch available quizzes
         if (data.status === 'COMPLETED' && data.modules_ready?.length > 0) {
-          // Auto-fetch first available quiz
-          // In a full implementation, you'd list all modules/quizzes
+          try {
+            const quizzesData = await documentsAPI.getQuizzes(documentId);
+            setQuizzes(quizzesData.quizzes || []);
+          } catch (err) {
+            console.error('Failed to fetch quizzes:', err);
+          }
         }
       } catch (err) {
         setError(err.response?.data?.detail || 'Failed to fetch status');
@@ -92,24 +97,45 @@ function DocumentStatus({ documentId, onQuizStart, onBack }) {
 
       {isCompleted && modulesReady.length > 0 && (
         <div className="quiz-section">
-          <h2>Ready Quizzes</h2>
-          <p>Modules ready: {modulesReady.join(', ')}</p>
-          <p className="info-text">
-            To start a quiz, you'll need the quiz ID. Check the Django admin or API.
-          </p>
-          <div className="quiz-input">
-            <input
-              type="number"
-              placeholder="Enter Quiz ID"
-              id="quiz-id-input"
-            />
-            <button
-              onClick={handleStartQuiz}
-              className="primary-button"
-            >
-              Start Quiz
-            </button>
-          </div>
+          <h2>Available Quizzes</h2>
+          {quizzes.length > 0 ? (
+            <div className="quizzes-list">
+              {quizzes.map((quiz) => (
+                <div key={quiz.id} className="quiz-card">
+                  <div className="quiz-info">
+                    <h3>{quiz.module__title || `Module ${quiz.module__id}`}</h3>
+                    <p>Questions: {quiz.total_questions} | Difficulty: {quiz.difficulty}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const quizIdInput = document.getElementById('quiz-id-input');
+                      if (quizIdInput) quizIdInput.value = quiz.id;
+                      handleStartQuiz();
+                    }}
+                    className="primary-button"
+                  >
+                    Start Quiz
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              <p className="info-text">
+                Quizzes are being generated. Please wait a moment and refresh.
+              </p>
+              <div className="quiz-input">
+                <input
+                  type="number"
+                  placeholder="Or enter Quiz ID manually"
+                  id="quiz-id-input"
+                />
+                <button onClick={handleStartQuiz} className="primary-button">
+                  Start Quiz
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
 

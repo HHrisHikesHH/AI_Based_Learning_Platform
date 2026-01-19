@@ -239,3 +239,25 @@ class DocumentAnalyticsView(APIView):
 
         analytics = get_document_analytics(request.user.id, pk)
         return Response(analytics)
+
+
+class DocumentQuizzesView(APIView):
+    """List all available quizzes for a document."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk: int, *args, **kwargs):
+        try:
+            document = Document.objects.get(pk=pk, user=request.user)
+        except Document.DoesNotExist as exc:
+            raise Http404 from exc
+
+        from quizzes.models import Quiz
+
+        quizzes = (
+            Quiz.objects.filter(module__document=document, module__is_quiz_ready=True)
+            .select_related("module")
+            .values("id", "module__id", "module__title", "total_questions", "difficulty")
+        )
+
+        return Response({"quizzes": list(quizzes)})
