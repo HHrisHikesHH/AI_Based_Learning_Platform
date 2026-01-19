@@ -101,7 +101,10 @@ function QuizResults({ results, attemptId, onBack }) {
       </div>
 
       {loadingFeedback && (
-        <div className="feedback-loading">Generating personalized feedback...</div>
+        <div className="feedback-loading">
+          <p>Generating personalized feedback...</p>
+          <p className="info-text">This may take a few seconds</p>
+        </div>
       )}
 
       {feedback && (
