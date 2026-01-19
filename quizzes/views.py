@@ -94,37 +94,57 @@ class QuizSubmitView(APIView):
                 question = questions[qid]
                 user_answer = (ad.get("user_answer") or "").strip()
                 correct_answer = (question.correct_answer or "").strip()
+                options = question.options or []
                 
                 # Normalize answers for comparison
-                # If user_answer starts with a letter followed by ". ", extract just the letter
-                # e.g., "C. Some text..." -> "C"
-                user_answer_normalized = user_answer.lower()
-                if user_answer_normalized and len(user_answer_normalized) > 2 and user_answer_normalized[1] == '.':
-                    user_answer_normalized = user_answer_normalized[0]
+                # Extract letter prefix from user_answer if it exists (e.g., "C. Text..." -> "C")
+                user_answer_letter = None
+                if user_answer and len(user_answer) >= 2 and user_answer[1] == '.':
+                    user_answer_letter = user_answer[0].upper()
                 
-                correct_answer_normalized = correct_answer.lower()
-                if correct_answer_normalized and len(correct_answer_normalized) > 2 and correct_answer_normalized[1] == '.':
-                    correct_answer_normalized = correct_answer_normalized[0]
+                # Extract letter prefix from correct_answer if it exists
+                correct_answer_letter = None
+                if correct_answer and len(correct_answer) >= 2 and correct_answer[1] == '.':
+                    correct_answer_letter = correct_answer[0].upper()
+                elif correct_answer and len(correct_answer) == 1:
+                    # correct_answer is already just a letter
+                    correct_answer_letter = correct_answer.upper()
                 
-                # Also check if correct_answer matches any of the full option texts
-                options = question.options or []
+                # Determine if answer is correct
                 is_correct = False
                 
-                # First, try direct comparison (normalized)
-                if user_answer_normalized == correct_answer_normalized:
-                    is_correct = True
-                else:
-                    # Check if correct_answer is a letter and user_answer starts with that letter
-                    if len(correct_answer_normalized) == 1 and user_answer_normalized.startswith(correct_answer_normalized):
+                # Method 1: Compare letters if both have letter prefixes
+                if user_answer_letter and correct_answer_letter:
+                    if user_answer_letter == correct_answer_letter:
                         is_correct = True
-                    # Check if user_answer matches the full correct option text
-                    elif user_answer.lower() == correct_answer.lower():
+                
+                # Method 2: If correct_answer is just a letter, check if user_answer starts with it
+                if not is_correct and correct_answer_letter and len(correct_answer) == 1:
+                    if user_answer_letter == correct_answer_letter:
                         is_correct = True
-                    # Check if correct_answer matches any option in the list
+                    # Also check if user_answer starts with the letter (case-insensitive)
+                    elif user_answer and user_answer[0].upper() == correct_answer_letter:
+                        is_correct = True
+                
+                # Method 3: Direct text comparison (case-insensitive, whitespace-normalized)
+                if not is_correct:
+                    if user_answer.lower().strip() == correct_answer.lower().strip():
+                        is_correct = True
+                
+                # Method 4: Check if correct_answer matches an option and user_answer matches that option
+                if not is_correct and options:
+                    # Find which option index the correct_answer refers to
+                    correct_option_text = None
+                    if correct_answer_letter:
+                        # correct_answer is a letter, find the option at that index
+                        option_index = ord(correct_answer_letter) - ord('A')
+                        if 0 <= option_index < len(options):
+                            correct_option_text = options[option_index]
                     elif correct_answer in options:
-                        correct_option_text = options[options.index(correct_answer)]
-                        if user_answer.lower() == correct_option_text.lower():
-                            is_correct = True
+                        correct_option_text = correct_answer
+                    
+                    if correct_option_text and user_answer.lower().strip() == correct_option_text.lower().strip():
+                        is_correct = True
                 
                 if is_correct:
                     correct_count += 1
