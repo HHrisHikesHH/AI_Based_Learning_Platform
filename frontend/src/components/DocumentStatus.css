@@ -1,0 +1,97 @@
+.status-container {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.status-container h1 {
+  color: #2c3e50;
+  margin-bottom: 2rem;
+}
+
+.status-card {
+  background: #ecf0f1;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+
+.status-badge-processing,
+.status-badge-pending,
+.status-badge-extracting,
+.status-badge-chunking,
+.status-badge-generating_modules {
+  background-color: #f39c12;
+  color: white;
+}
+
+.status-badge-completed {
+  background-color: #27ae60;
+  color: white;
+}
+
+.status-badge-failed {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.progress-info {
+  color: #34495e;
+}
+
+.progress-info p {
+  margin: 0.5rem 0;
+}
+
+.processing-message {
+  text-align: center;
+  padding: 2rem;
+  color: #7f8c8d;
+}
+
+.info-text {
+  color: #95a5a6;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.quiz-section {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: #e8f5e9;
+  border-radius: 8px;
+}
+
+.quiz-section h2 {
+  color: #2c3e50;
+  margin-bottom: 1rem;
+}
+
+.quiz-input {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.quiz-input input {
+  flex: 1;
+  padding: 0.75rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.quiz-input input:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
