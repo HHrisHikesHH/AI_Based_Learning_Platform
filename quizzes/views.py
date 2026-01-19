@@ -121,15 +121,24 @@ class QuizSubmitView(APIView):
             attempt.time_spent_seconds = total_time
             attempt.save(update_fields=["score", "completed_at", "time_spent_seconds"])
 
-        # Update progress and stats asynchronously
+        # Update progress and stats asynchronously (or synchronously if Celery not available)
         module = attempt.quiz.module
         try:
-            update_user_progress.delay(user.id, module.id)
-            update_document_stats.delay(user.id, module.document_id)
-            generate_personalized_feedback.delay(attempt.id)
-        except Exception:
+            # Try Celery first, fall back to synchronous execution
+            try:
+                update_user_progress.delay(user.id, module.id)
+                update_document_stats.delay(user.id, module.document_id)
+                generate_personalized_feedback.delay(attempt.id)
+            except Exception:
+                # Celery not available, run synchronously
+                update_user_progress(user.id, module.id)
+                update_document_stats(user.id, module.document_id)
+                generate_personalized_feedback(attempt.id)
+        except Exception as exc:
             # Best-effort; don't block response
-            pass
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error("Failed to update progress/feedback: %s", exc)
 
         # Prepare detailed results
         answers_qs = (
